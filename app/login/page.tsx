@@ -37,9 +37,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-2xl shadow max-w-sm w-full">
         <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto mb-3">L</div>
-          <h1 className="text-2xl font-semibold">LunchBoard</h1>
-          <p className="text-gray-500 text-sm mt-1">社内ランチ募集掲示板</p>
+          <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold mx-auto mb-3">IL6</div>
+          <h1 className="text-2xl font-semibold">IL6 Lunch LOVE</h1>
+          <p className="text-gray-500 text-sm mt-1">社内ランチマッチング</p>
         </div>
         <div className="space-y-3">
           <input type="text" placeholder="名前" value={name} onChange={e => setName(e.target.value)}

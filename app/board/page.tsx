@@ -129,10 +129,10 @@ export default function BoardPage() {
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-white font-bold">L</div>
+            <div className="w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-xs">IL6</div>
             <div>
-              <div className="font-semibold text-lg">LunchBoard</div>
-              <div className="text-xs text-gray-400">社内ランチ募集掲示板</div>
+              <div className="font-semibold text-lg">IL6 Lunch LOVE</div>
+              <div className="text-xs text-gray-400">社内ランチマッチング</div>
             </div>
           </div>
           <div className="flex gap-2">
