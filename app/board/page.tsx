@@ -97,13 +97,25 @@ export default function BoardPage() {
   }
 
   const todayStr = new Date().toISOString().slice(0, 10)
-  const weekLater = new Date()
-  weekLater.setDate(weekLater.getDate() + 7)
-  const weekStr = weekLater.toISOString().slice(0, 10)
+  const now = new Date()
+  const dayOfWeek = now.getDay()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  const mondayStr = monday.toISOString().slice(0, 10)
+  const sundayStr = sunday.toISOString().slice(0, 10)
+
+  const nextMonday = new Date(monday)
+  nextMonday.setDate(monday.getDate() + 7)
+  const nextSunday = new Date(nextMonday)
+  nextSunday.setDate(nextMonday.getDate() + 6)
+  const nextMondayStr = nextMonday.toISOString().slice(0, 10)
+  const nextSundayStr = nextSunday.toISOString().slice(0, 10)
 
   const filteredPosts = posts.filter(post => {
     if (filter === '今日') return post.date === todayStr
-    if (filter === '今週') return post.date >= todayStr && post.date <= weekStr
+    if (filter === '今週') return post.date >= mondayStr && post.date <= sundayStr
     if (filter === '募集中') {
       const approved = post.applications.filter(a => a.status === 'approved').length
       return approved < post.slots - 1
