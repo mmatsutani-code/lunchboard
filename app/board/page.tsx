@@ -57,8 +57,51 @@ export default function BoardPage() {
       .eq('post_id', postId).eq('user_id', userId)
     loadPosts()
   }
+async function approve(applicationId: string, postId: string, applicantId: string) {
+    await supabase.from('applications').update({ status: 'approved' }).eq('id', applicationId)
+    const post = posts.find(p => p.id === postId)
+    if (!post) return
 
-  async function approve(applicationId: string, postId: string, applicantId: string) {
+    // 既存のルームがあるか確認
+    const { data: existingRoom } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('post_id', postId)
+      .single()
+
+    let roomId = existingRoom?.id
+
+    if (!roomId) {
+      // 新しいルームを作成
+      const { data: room } = await supabase.from('rooms').insert({ post_id: postId }).select().single()
+      if (!room) return
+      roomId = room.id
+      // 募集者をメンバーに追加
+      await supabase.from('room_members').insert({ room_id: roomId, user_id: userId })
+    }
+
+    // 応募者をメンバーに追加（重複チェック）
+    const { data: existingMember } = await supabase
+      .from('room_members')
+      .select('user_id')
+      .eq('room_id', roomId)
+      .eq('user_id', applicantId)
+      .single()
+
+    if (!existingMember) {
+      await supabase.from('room_members').insert({ room_id: roomId, user_id: applicantId })
+    }
+
+    await supabase.from('messages').insert({
+      room_id: roomId,
+      user_id: userId,
+      text: `✅ ${post.profiles.name}が${applicantId}さんを承認しました！`
+    })
+
+    loadPosts()
+    router.push(`/messages/${roomId}`)
+  }
+  
     await supabase.from('applications').update({ status: 'approved' }).eq('id', applicationId)
     const post = posts.find(p => p.id === postId)
     if (!post) return
