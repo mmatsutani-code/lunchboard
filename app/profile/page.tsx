@@ -1,15 +1,19 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 export default function ProfilePage() {
   const [name, setName] = useState('')
+  const [nickname, setNickname] = useState('')
   const [department, setDepartment] = useState('')
   const [email, setEmail] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
   const router = useRouter()
 
@@ -21,18 +25,38 @@ export default function ProfilePage() {
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (data) {
         setName(data.name || '')
+        setNickname(data.nickname || '')
         setDepartment(data.department || '')
+        setAvatarUrl(data.avatar_url || '')
       }
       setLoading(false)
     }
     load()
   }, [])
 
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}/avatar.${ext}`
+    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    if (!error) {
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      const url = data.publicUrl + '?t=' + Date.now()
+      setAvatarUrl(url)
+      await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id)
+    }
+    setUploading(false)
+  }
+
   async function handleSave() {
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('profiles').upsert({ id: user.id, name, department })
+    await supabase.from('profiles').upsert({ id: user.id, name, nickname, department, avatar_url: avatarUrl })
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
@@ -54,10 +78,23 @@ export default function ProfilePage() {
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-center mb-2">
-            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-2xl font-bold">
-              {name?.[0] || '?'}
+          <div className="flex flex-col items-center gap-3 mb-2">
+            <div className="relative">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="avatar"
+                  className="w-20 h-20 rounded-full object-cover border-2 border-green-200" />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-3xl font-bold">
+                  {nickname?.[0] || name?.[0] || '?'}
+                </div>
+              )}
+              <button onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center text-white text-sm hover:bg-green-600">
+                ✏️
+              </button>
             </div>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+            {uploading && <span className="text-xs text-gray-400">アップロード中...</span>}
           </div>
 
           <div>
@@ -68,6 +105,12 @@ export default function ProfilePage() {
           <div>
             <label className="text-sm text-gray-500 mb-1 block">名前</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)}
+              className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-500 mb-1 block">ニックネーム（任意）</label>
+            <input type="text" placeholder="例：まさき、ランチ王" value={nickname} onChange={e => setNickname(e.target.value)}
               className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
           </div>
 
