@@ -6,7 +6,9 @@ import { useRouter } from 'next/navigation'
 export default function ProfilePage() {
   const [name, setName] = useState('')
   const [nickname, setNickname] = useState('')
-  const [department, setDepartment] = useState('')
+  const [bio, setBio] = useState('')
+  const [ageGroup, setAgeGroup] = useState('')
+  const [gender, setGender] = useState('')
   const [email, setEmail] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [loading, setLoading] = useState(true)
@@ -26,7 +28,9 @@ export default function ProfilePage() {
       if (data) {
         setName(data.name || '')
         setNickname(data.nickname || '')
-        setDepartment(data.department || '')
+        setBio(data.bio || '')
+        setAgeGroup(data.age_group || '')
+        setGender(data.gender || '')
         setAvatarUrl(data.avatar_url || '')
       }
       setLoading(false)
@@ -60,7 +64,9 @@ export default function ProfilePage() {
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('profiles').upsert({ id: user.id, name, nickname, department, avatar_url: avatarUrl })
+    await supabase.from('profiles').upsert({
+      id: user.id, name, nickname, bio, age_group: ageGroup, gender, avatar_url: avatarUrl
+    })
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
@@ -121,9 +127,33 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="text-sm text-gray-500 mb-1 block">部署</label>
-            <input type="text" value={department} onChange={e => setDepartment(e.target.value)}
-              className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+            <label className="text-sm text-gray-500 mb-1 block">年齢層</label>
+            <div className="flex gap-2">
+              {['20代', '30代', '40代', '50代以上'].map(age => (
+                <button key={age} onClick={() => setAgeGroup(age)}
+                  className={`flex-1 py-2 rounded-lg text-sm border transition-colors ${ageGroup === age ? 'bg-green-500 text-white border-green-500' : 'border-gray-200 text-gray-500 hover:border-green-300'}`}>
+                  {age}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-500 mb-1 block">性別</label>
+            <div className="flex gap-2">
+              {['男性', '女性', 'その他'].map(g => (
+                <button key={g} onClick={() => setGender(g)}
+                  className={`flex-1 py-2 rounded-lg text-sm border transition-colors ${gender === g ? 'bg-green-500 text-white border-green-500' : 'border-gray-200 text-gray-500 hover:border-green-300'}`}>
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-500 mb-1 block">自己紹介</label>
+            <textarea placeholder="好きな食べ物や、ランチの好みなど自由に！" value={bio} onChange={e => setBio(e.target.value)}
+              className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none h-24" />
           </div>
 
           <button onClick={handleSave} disabled={saving}
