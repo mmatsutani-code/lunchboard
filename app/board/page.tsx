@@ -16,6 +16,7 @@ type Post = {
   time: string
   shop: string
   shop_url: string
+  genre: string
   slots: number
   comment: string
   user_id: string
@@ -177,9 +178,13 @@ export default function BoardPage() {
                       {displayAvatar(post.profiles)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="font-medium text-sm">{displayName(post.profiles)}</span>
-                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{post.profiles?.department}</span>
+                        {post.genre && (
+                          <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full border border-green-200">
+                            {post.genre}
+                          </span>
+                        )}
                         {isMine && <span className="text-xs text-green-600 font-medium">自分の募集</span>}
                       </div>
                       <div className="font-semibold">{fmt(post.date)}　{post.time}〜</div>
