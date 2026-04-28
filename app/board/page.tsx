@@ -195,8 +195,12 @@ export default function BoardPage() {
                       {post.comment && <div className="text-sm text-gray-500 mt-2">{post.comment}</div>}
                     </div>
                     {isMine && (
-                      <button onClick={() => deletePost(post.id)}
-                        className="text-gray-300 hover:text-red-400 text-lg flex-shrink-0">🗑</button>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button onClick={() => router.push(`/board/edit/${post.id}`)}
+                          className="text-gray-300 hover:text-blue-400 text-lg">✏️</button>
+                        <button onClick={() => deletePost(post.id)}
+                          className="text-gray-300 hover:text-red-400 text-lg">🗑</button>
+                      </div>
                     )}
                   </div>
 
