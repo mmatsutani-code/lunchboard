@@ -25,18 +25,24 @@ export default function RoomPage() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { router.push('/login'); return }
       setUserId(data.user.id)
+      markAsRead(data.user.id)
     })
     loadMessages()
     loadRoomInfo()
 
     const channel = supabase
-      .channel('messages')
+      .channel('messages-' + roomId)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
         filter: `room_id=eq.${roomId}`
-      }, () => loadMessages())
+      }, () => {
+        loadMessages()
+        supabase.auth.getUser().then(({ data }) => {
+          if (data.user) markAsRead(data.user.id)
+        })
+      })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
@@ -45,6 +51,14 @@ export default function RoomPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  async function markAsRead(uid: string) {
+    await supabase.from('message_reads').upsert({
+      room_id: roomId,
+      user_id: uid,
+      last_read_at: new Date().toISOString()
+    }, { onConflict: 'room_id,user_id' })
+  }
 
   async function loadRoomInfo() {
     const { data } = await supabase
@@ -73,6 +87,7 @@ export default function RoomPage() {
       user_id: userId,
       text: t
     })
+    await markAsRead(userId)
   }
 
   const fmt = (d: string) => {

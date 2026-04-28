@@ -32,6 +32,7 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true)
   const [expandedPost, setExpandedPost] = useState<string | null>(null)
   const [filter, setFilter] = useState('すべて')
+  const [unreadCount, setUnreadCount] = useState(0)
   const supabase = createClient()
   const router = useRouter()
 
@@ -39,9 +40,52 @@ export default function BoardPage() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { router.push('/login'); return }
       setUserId(data.user.id)
+      loadUnreadCount(data.user.id)
     })
     loadPosts()
+
+    const channel = supabase
+      .channel('new-messages')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+      }, () => {
+        supabase.auth.getUser().then(({ data }) => {
+          if (data.user) loadUnreadCount(data.user.id)
+        })
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
+
+  async function loadUnreadCount(uid: string) {
+    const { data: memberOf } = await supabase
+      .from('room_members')
+      .select('room_id')
+      .eq('user_id', uid)
+    const roomIds = memberOf?.map(m => m.room_id) || []
+    if (roomIds.length === 0) return
+
+    const { data: reads } = await supabase
+      .from('message_reads')
+      .select('room_id, last_read_at')
+      .eq('user_id', uid)
+
+    let unread = 0
+    for (const roomId of roomIds) {
+      const read = reads?.find(r => r.room_id === roomId)
+      const { count } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('room_id', roomId)
+        .neq('user_id', uid)
+        .gt('created_at', read?.last_read_at || '2000-01-01')
+      unread += count || 0
+    }
+    setUnreadCount(unread)
+  }
 
   async function loadPosts() {
     const { data } = await supabase
@@ -138,7 +182,14 @@ export default function BoardPage() {
           </div>
           <div className="flex gap-2">
             <button onClick={() => router.push('/messages')}
-              className="border rounded-lg px-3 py-2 text-sm hover:bg-gray-100">💬</button>
+              className="relative border rounded-lg px-3 py-2 text-sm hover:bg-gray-100">
+              💬
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
             <button onClick={() => router.push('/calendar')}
               className="border rounded-lg px-3 py-2 text-sm hover:bg-gray-100">📅</button>
             <button onClick={() => router.push('/users')}
