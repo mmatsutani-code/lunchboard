@@ -26,6 +26,19 @@ type Post = {
 
 const FILTERS = ['すべて', '今日', '今週', '募集中']
 
+const GENRE_COLORS: Record<string, string> = {
+  '和食': 'bg-red-100 text-red-600',
+  'イタリアン': 'bg-green-100 text-green-600',
+  'フレンチ': 'bg-blue-100 text-blue-600',
+  '中華': 'bg-yellow-100 text-yellow-600',
+  'タイ料理': 'bg-orange-100 text-orange-600',
+  'ベトナム料理': 'bg-lime-100 text-lime-600',
+  'カレー': 'bg-amber-100 text-amber-600',
+  '中東料理': 'bg-purple-100 text-purple-600',
+  'お茶・カフェ': 'bg-pink-100 text-pink-600',
+  'その他': 'bg-gray-100 text-gray-600',
+}
+
 export default function BoardPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [userId, setUserId] = useState<string | null>(null)
@@ -46,11 +59,7 @@ export default function BoardPage() {
 
     const channel = supabase
       .channel('new-messages')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-      }, () => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
         supabase.auth.getUser().then(({ data }) => {
           if (data.user) loadUnreadCount(data.user.id)
         })
@@ -61,27 +70,15 @@ export default function BoardPage() {
   }, [])
 
   async function loadUnreadCount(uid: string) {
-    const { data: memberOf } = await supabase
-      .from('room_members')
-      .select('room_id')
-      .eq('user_id', uid)
+    const { data: memberOf } = await supabase.from('room_members').select('room_id').eq('user_id', uid)
     const roomIds = memberOf?.map(m => m.room_id) || []
     if (roomIds.length === 0) return
-
-    const { data: reads } = await supabase
-      .from('message_reads')
-      .select('room_id, last_read_at')
-      .eq('user_id', uid)
-
+    const { data: reads } = await supabase.from('message_reads').select('room_id, last_read_at').eq('user_id', uid)
     let unread = 0
     for (const roomId of roomIds) {
       const read = reads?.find(r => r.room_id === roomId)
-      const { count } = await supabase
-        .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('room_id', roomId)
-        .neq('user_id', uid)
-        .gt('created_at', read?.last_read_at || '2000-01-01')
+      const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true })
+        .eq('room_id', roomId).neq('user_id', uid).gt('created_at', read?.last_read_at || '2000-01-01')
       unread += count || 0
     }
     setUnreadCount(unread)
@@ -141,78 +138,100 @@ export default function BoardPage() {
     return `${t.getMonth()+1}月${t.getDate()}日（${'日月火水木金土'[t.getDay()]}）`
   }
 
-  const displayName = (p: { name: string; nickname: string }) => p?.nickname || p?.name || '?'
-  const displayAvatar = (p: { name: string; nickname: string; avatar_url: string }) => {
+  const displayName = (p: any) => p?.nickname || p?.name || '?'
+  const displayAvatar = (p: any) => {
     if (p?.avatar_url) return <img src={p.avatar_url} alt="" className="w-full h-full object-cover rounded-full" />
-    return <span>{(p?.nickname || p?.name)?.[0] || '?'}</span>
+    return <span className="text-lg">{(p?.nickname || p?.name)?.[0] || '?'}</span>
   }
 
   const todayStr = new Date().toISOString().slice(0, 10)
   const now = new Date()
-  const dayOfWeek = now.getDay()
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
+  const dow = now.getDay()
+  const monday = new Date(now); monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1))
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6)
   const mondayStr = monday.toISOString().slice(0, 10)
   const sundayStr = sunday.toISOString().slice(0, 10)
 
   const filteredPosts = posts.filter(post => {
     if (filter === '今日') return post.date === todayStr
     if (filter === '今週') return post.date >= mondayStr && post.date <= sundayStr
-    if (filter === '募集中') {
-      const approved = post.applications.filter(a => a.status === 'approved').length
-      return approved < post.slots - 1
-    }
+    if (filter === '募集中') return post.applications.filter(a => a.status === 'approved').length < post.slots - 1
     return true
   })
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">読み込み中...</div>
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
+      <div className="text-center">
+        <div className="text-4xl mb-3 animate-bounce">🍜</div>
+        <p className="text-green-600 font-medium">読み込み中...</p>
+      </div>
+    </div>
+  )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-xs">IL6</div>
-            <div>
-              <div className="font-semibold text-lg">IL6 Lunch LOVE</div>
-              <div className="text-xs text-gray-400">社内ランチマッチング</div>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
+      {/* ヘッダー */}
+      <div className="bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg">
+        <div className="max-w-2xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-md">
+                <span className="text-green-600 font-black text-xs">IL6</span>
+              </div>
+              <div>
+                <div className="font-black text-white text-lg tracking-wide">IL6 Lunch LOVE</div>
+                <div className="text-green-100 text-xs">社内ランチマッチング 🍱</div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => router.push('/messages')}
+                className="relative bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all">
+                💬
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold pulse-dot">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              <button onClick={() => router.push('/calendar')}
+                className="bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all">📅</button>
+              <button onClick={() => router.push('/users')}
+                className="bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all">👥</button>
+              <button onClick={() => router.push('/profile')}
+                className="bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all">👤</button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => router.push('/messages')}
-              className="relative border rounded-lg px-3 py-2 text-sm hover:bg-gray-100">
-              💬
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-            <button onClick={() => router.push('/calendar')}
-              className="border rounded-lg px-3 py-2 text-sm hover:bg-gray-100">📅</button>
-            <button onClick={() => router.push('/users')}
-              className="border rounded-lg px-3 py-2 text-sm hover:bg-gray-100">👥</button>
-            <button onClick={() => router.push('/profile')}
-              className="border rounded-lg px-3 py-2 text-sm hover:bg-gray-100">👤</button>
-            <button onClick={() => router.push('/board/new')}
-              className="bg-green-500 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-green-600">＋ 募集する</button>
-          </div>
         </div>
+      </div>
 
-        <div className="flex gap-2 mb-4 border-b border-gray-200">
+      <div className="max-w-2xl mx-auto px-4 py-5">
+        {/* 募集するボタン */}
+        <button onClick={() => router.push('/board/new')}
+          className="w-full bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-2xl py-4 font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all mb-5 flex items-center justify-center gap-2">
+          <span className="text-2xl">🍽️</span>
+          ランチ募集を立てる！
+        </button>
+
+        {/* フィルター */}
+        <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
           {FILTERS.map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${filter === f ? 'border-green-500 text-green-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+              className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${filter === f
+                ? 'bg-green-500 text-white shadow-md transform scale-105'
+                : 'bg-white text-gray-500 shadow hover:shadow-md'}`}>
               {f}
             </button>
           ))}
         </div>
 
-        <div className="space-y-3">
+        {/* カード一覧 */}
+        <div className="space-y-4">
           {filteredPosts.length === 0 && (
-            <div className="text-center py-12 text-gray-400">該当する募集がありません</div>
+            <div className="text-center py-16">
+              <div className="text-6xl mb-4">🍱</div>
+              <p className="text-gray-400 font-medium">まだ募集がありません</p>
+              <p className="text-gray-300 text-sm mt-1">最初の募集を立ててみよう！</p>
+            </div>
           )}
           {filteredPosts.map(post => {
             const isMine = post.user_id === userId
@@ -220,80 +239,99 @@ export default function BoardPage() {
             const approvedCount = post.applications.filter(a => a.status === 'approved').length
             const pendingApps = post.applications.filter(a => a.status === 'pending')
             const isExpanded = expandedPost === post.id
+            const isFull = approvedCount >= post.slots - 1
+            const genreColor = GENRE_COLORS[post.genre] || 'bg-gray-100 text-gray-600'
 
             return (
-              <div key={post.id} className={`bg-white rounded-2xl shadow-sm border ${isMine ? 'border-l-4 border-l-green-500' : 'border-gray-100'}`}>
+              <div key={post.id} className={`bg-white rounded-3xl shadow-md overflow-hidden animate-fade-in ${isMine ? 'ring-2 ring-green-400' : ''}`}>
+                {isMine && (
+                  <div className="bg-gradient-to-r from-green-400 to-emerald-400 px-4 py-1.5">
+                    <span className="text-white text-xs font-bold">✨ 自分の募集</span>
+                  </div>
+                )}
                 <div className="p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-sm flex-shrink-0 overflow-hidden">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-100 to-emerald-200 flex items-center justify-center font-bold text-green-700 flex-shrink-0 overflow-hidden shadow-sm">
                       {displayAvatar(post.profiles)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-medium text-sm">{displayName(post.profiles)}</span>
+                        <span className="font-bold text-gray-800">{displayName(post.profiles)}</span>
                         {post.genre && (
-                          <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full border border-green-200">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${genreColor}`}>
                             {post.genre}
                           </span>
                         )}
-                        {isMine && <span className="text-xs text-green-600 font-medium">自分の募集</span>}
                       </div>
-                      <div className="font-semibold">{fmt(post.date)}　{post.time}〜</div>
-                      <div className="text-sm text-gray-500 mt-0.5 flex items-center gap-1">
+                      <div className="font-black text-gray-900 text-lg leading-tight">{fmt(post.date)}</div>
+                      <div className="text-green-600 font-semibold text-sm">🕐 {post.time}〜</div>
+                      <div className="text-sm text-gray-500 mt-1 flex items-center gap-1">
                         📍
                         {post.shop_url ? (
                           <a href={post.shop_url} target="_blank" rel="noopener noreferrer"
-                            className="text-green-600 underline hover:text-green-700">{post.shop}</a>
+                            className="text-blue-500 underline hover:text-blue-700 font-medium">{post.shop}</a>
                         ) : (
-                          <span>{post.shop}</span>
+                          <span className="font-medium">{post.shop}</span>
                         )}
                       </div>
-                      {post.comment && <div className="text-sm text-gray-500 mt-2">{post.comment}</div>}
+                      {post.comment && (
+                        <div className="mt-2 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-600 italic">
+                          💬 {post.comment}
+                        </div>
+                      )}
                     </div>
                     {isMine && (
                       <div className="flex gap-1 flex-shrink-0">
                         <button onClick={() => router.push(`/board/edit/${post.id}`)}
-                          className="text-gray-300 hover:text-blue-400 text-lg">✏️</button>
+                          className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-colors">✏️</button>
                         <button onClick={() => deletePost(post.id)}
-                          className="text-gray-300 hover:text-red-400 text-lg">🗑</button>
+                          className="w-8 h-8 bg-red-50 rounded-xl flex items-center justify-center hover:bg-red-100 transition-colors">🗑️</button>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                     <button onClick={() => setExpandedPost(isExpanded ? null : post.id)}
-                      className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer">
-                      👥 応募者 {post.applications.length}人{isMine && pendingApps.length > 0 && `（承認待ち ${pendingApps.length}人）`} {isExpanded ? '▲' : '▼'}
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 font-medium">
+                      👥 {post.applications.length}人が応募
+                      {isMine && pendingApps.length > 0 && (
+                        <span className="bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full text-xs font-bold">
+                          承認待ち {pendingApps.length}
+                        </span>
+                      )}
+                      <span>{isExpanded ? '▲' : '▼'}</span>
                     </button>
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-1 rounded-full ${approvedCount >= post.slots-1 ? 'bg-gray-100 text-gray-400' : 'bg-green-50 text-green-600'}`}>
-                        {approvedCount >= post.slots-1 ? '満員' : `残り${post.slots-1-approvedCount}人`}
+                      <span className={`text-xs px-3 py-1 rounded-full font-bold ${isFull ? 'bg-gray-100 text-gray-400' : 'bg-green-100 text-green-600'}`}>
+                        {isFull ? '😢 満員' : `残り${post.slots-1-approvedCount}席`}
                       </span>
-                      {!isMine && !myApp && approvedCount < post.slots-1 && (
+                      {!isMine && !myApp && !isFull && (
                         <button onClick={() => apply(post.id)}
-                          className="text-xs bg-green-500 text-white rounded-lg px-3 py-1.5 hover:bg-green-600">応募する</button>
+                          className="bg-gradient-to-r from-green-400 to-emerald-500 text-white text-xs px-4 py-1.5 rounded-full font-bold shadow hover:shadow-md transform hover:-translate-y-0.5 transition-all">
+                          参加する！
+                        </button>
                       )}
-                      {!isMine && myApp?.status === 'pending' && <span className="text-xs text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full">承認待ち</span>}
-                      {!isMine && myApp?.status === 'approved' && <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">✅ 承認済み</span>}
-                      {!isMine && myApp?.status === 'rejected' && <span className="text-xs text-red-400 bg-red-50 px-2 py-1 rounded-full">見送り</span>}
+                      {!isMine && myApp?.status === 'pending' && <span className="text-xs text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full font-bold">⏳ 承認待ち</span>}
+                      {!isMine && myApp?.status === 'approved' && <span className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full font-bold">✅ 参加確定</span>}
+                      {!isMine && myApp?.status === 'rejected' && <span className="text-xs text-red-400 bg-red-50 px-3 py-1 rounded-full font-bold">見送り</span>}
                     </div>
                   </div>
                 </div>
 
                 {isExpanded && (
-                  <div className="border-t border-gray-50 px-4 pb-4">
+                  <div className="border-t border-gray-100 bg-gray-50 px-4 pb-4 pt-3">
                     {post.applications.length === 0 ? (
-                      <div className="text-xs text-gray-400 py-3 text-center">まだ応募がありません</div>
+                      <div className="text-xs text-gray-400 py-2 text-center">まだ応募がありません 🙏</div>
                     ) : (
-                      <div className="space-y-2 pt-3">
+                      <div className="space-y-2">
                         {post.applications.map(app => (
-                          <div key={app.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                          <div key={app.id} className="flex items-center justify-between bg-white rounded-2xl px-3 py-2 shadow-sm">
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-semibold overflow-hidden">
+                              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-green-100 to-emerald-200 flex items-center justify-center text-green-700 text-xs font-bold overflow-hidden">
                                 {displayAvatar(app.profiles)}
                               </div>
                               <div>
-                                <div className="text-sm font-medium">{displayName(app.profiles)}</div>
+                                <div className="text-sm font-bold text-gray-800">{displayName(app.profiles)}</div>
                                 <div className="text-xs text-gray-400">{app.profiles?.department}</div>
                               </div>
                             </div>
@@ -301,14 +339,14 @@ export default function BoardPage() {
                               {app.status === 'pending' && isMine && (
                                 <>
                                   <button onClick={() => approve(app.id, post.id, app.user_id)}
-                                    className="text-xs bg-green-500 text-white rounded-lg px-3 py-1.5 hover:bg-green-600">承認</button>
+                                    className="text-xs bg-gradient-to-r from-green-400 to-emerald-500 text-white rounded-full px-3 py-1.5 font-bold shadow hover:shadow-md transition-all">承認 ✓</button>
                                   <button onClick={() => reject(app.id)}
-                                    className="text-xs border rounded-lg px-3 py-1.5 text-gray-500 hover:bg-gray-100">見送り</button>
+                                    className="text-xs bg-gray-100 text-gray-500 rounded-full px-3 py-1.5 font-bold hover:bg-gray-200 transition-all">見送り</button>
                                 </>
                               )}
-                              {app.status === 'approved' && <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">✅ 承認済み</span>}
-                              {app.status === 'rejected' && <span className="text-xs text-red-400 bg-red-50 px-2 py-1 rounded-full">見送り</span>}
-                              {app.status === 'pending' && !isMine && <span className="text-xs text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full">承認待ち</span>}
+                              {app.status === 'approved' && <span className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full font-bold">✅ 参加確定</span>}
+                              {app.status === 'rejected' && <span className="text-xs text-red-400 bg-red-50 px-3 py-1 rounded-full font-bold">見送り</span>}
+                              {app.status === 'pending' && !isMine && <span className="text-xs text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full font-bold">⏳ 承認待ち</span>}
                             </div>
                           </div>
                         ))}
