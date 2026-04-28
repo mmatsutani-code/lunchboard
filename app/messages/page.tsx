@@ -7,7 +7,7 @@ type Room = {
   id: string
   post_id: string
   posts: { shop: string; date: string }
-  room_members: { user_id: string; profiles: { name: string } }[]
+  room_members: { user_id: string; profiles: { name: string; nickname: string; avatar_url: string } }[]
   messages: { text: string; created_at: string }[]
 }
 
@@ -37,7 +37,7 @@ export default function MessagesPage() {
 
     const { data } = await supabase
       .from('rooms')
-      .select('*, posts(shop, date), room_members(user_id, profiles(name)), messages(text, created_at)')
+      .select('*, posts(shop, date), room_members(user_id, profiles(name, nickname, avatar_url)), messages(text, created_at)')
       .in('id', roomIds)
       .order('created_at', { referencedTable: 'messages', ascending: false })
     setRooms(data || [])
@@ -48,6 +48,8 @@ export default function MessagesPage() {
     const t = new Date(d)
     return `${t.getMonth()+1}月${t.getDate()}日（${'日月火水木金土'[t.getDay()]}）`
   }
+
+  const displayName = (p: any) => p?.nickname || p?.name || '?'
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">読み込み中...</div>
 
@@ -67,20 +69,30 @@ export default function MessagesPage() {
           <div className="space-y-3">
             {rooms.map(room => {
               const others = room.room_members.filter(m => m.user_id !== userId)
-              const names = others.map(m => m.profiles?.name).join('・')
               const lastMsg = room.messages?.[0]
+
               return (
                 <div key={room.id}
                   onClick={() => router.push(`/messages/${room.id}`)}
                   className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 cursor-pointer hover:border-green-200">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-sm flex-shrink-0">
-                      {others[0]?.profiles?.name?.[0]}
+                    <div className="flex -space-x-2 flex-shrink-0">
+                      {others.slice(0, 3).map((m, i) => (
+                        <div key={i} className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-sm border-2 border-white overflow-hidden">
+                          {m.profiles?.avatar_url
+                            ? <img src={m.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                            : <span>{displayName(m.profiles)[0]}</span>
+                          }
+                        </div>
+                      ))}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm">{names}</div>
+                      <div className="font-medium text-sm">
+                        {others.map(m => displayName(m.profiles)).join('・')}
+                      </div>
                       <div className="text-xs text-gray-400 mt-0.5">
-                        📍 {room.posts?.shop}　{room.posts?.date && fmt(room.posts.date)}
+                        {room.posts?.shop && `📍 ${room.posts.shop}`}
+                        {room.posts?.date && `　${fmt(room.posts.date)}`}
                       </div>
                       {lastMsg && (
                         <div className="text-xs text-gray-400 mt-1 truncate">{lastMsg.text}</div>
