@@ -160,27 +160,27 @@ export default function BoardPage() {
   })
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-rose-100">
       <div className="text-center">
         <div className="text-4xl mb-3 animate-bounce">🍜</div>
-        <p className="text-green-600 font-medium">読み込み中...</p>
+        <p className="text-pink-500 font-medium">読み込み中...</p>
       </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
       {/* ヘッダー */}
-      <div className="bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg">
+      <div className="bg-gradient-to-r from-pink-400 to-rose-400 shadow-lg">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-md">
-                <span className="text-green-600 font-black text-xs">IL6</span>
+                <span className="text-pink-500 font-black text-xs">IL6</span>
               </div>
               <div>
                 <div className="font-black text-white text-lg tracking-wide">IL6 Lunch LOVE</div>
-                <div className="text-green-100 text-xs">社内ランチマッチング 🍱</div>
+                <div className="text-pink-100 text-xs">社内ランチマッチング 🍱</div>
               </div>
             </div>
             <div className="flex gap-2">
@@ -207,7 +207,7 @@ export default function BoardPage() {
       <div className="max-w-2xl mx-auto px-4 py-5">
         {/* 募集するボタン */}
         <button onClick={() => router.push('/board/new')}
-          className="w-full bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-2xl py-4 font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all mb-5 flex items-center justify-center gap-2">
+          className="w-full bg-gradient-to-r from-pink-400 to-rose-500 text-white rounded-2xl py-4 font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all mb-5 flex items-center justify-center gap-2">
           <span className="text-2xl">🍽️</span>
           ランチ募集を立てる！
         </button>
@@ -217,7 +217,7 @@ export default function BoardPage() {
           {FILTERS.map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${filter === f
-                ? 'bg-green-500 text-white shadow-md transform scale-105'
+                ? 'bg-pink-500 text-white shadow-md transform scale-105'
                 : 'bg-white text-gray-500 shadow hover:shadow-md'}`}>
               {f}
             </button>
@@ -243,15 +243,15 @@ export default function BoardPage() {
             const genreColor = GENRE_COLORS[post.genre] || 'bg-gray-100 text-gray-600'
 
             return (
-              <div key={post.id} className={`bg-white rounded-3xl shadow-md overflow-hidden animate-fade-in ${isMine ? 'ring-2 ring-green-400' : ''}`}>
+              <div key={post.id} className={`bg-white rounded-3xl shadow-md overflow-hidden animate-fade-in ${isMine ? 'ring-2 ring-pink-400' : ''}`}>
                 {isMine && (
-                  <div className="bg-gradient-to-r from-green-400 to-emerald-400 px-4 py-1.5">
+                  <div className="bg-gradient-to-r from-pink-400 to-rose-400 px-4 py-1.5">
                     <span className="text-white text-xs font-bold">✨ 自分の募集</span>
                   </div>
                 )}
                 <div className="p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-100 to-emerald-200 flex items-center justify-center font-bold text-green-700 flex-shrink-0 overflow-hidden shadow-sm">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-100 to-rose-200 flex items-center justify-center font-bold text-pink-600 flex-shrink-0 overflow-hidden shadow-sm">
                       {displayAvatar(post.profiles)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -264,7 +264,7 @@ export default function BoardPage() {
                         )}
                       </div>
                       <div className="font-black text-gray-900 text-lg leading-tight">{fmt(post.date)}</div>
-                      <div className="text-green-600 font-semibold text-sm">🕐 {post.time}〜</div>
+                      <div className="text-pink-500 font-semibold text-sm">🕐 {post.time}〜</div>
                       <div className="text-sm text-gray-500 mt-1 flex items-center gap-1">
                         📍
                         {post.shop_url ? (
@@ -275,7 +275,7 @@ export default function BoardPage() {
                         )}
                       </div>
                       {post.comment && (
-                        <div className="mt-2 bg-gray-50 rounded-xl px-3 py-2 text-sm text-gray-600 italic">
+                        <div className="mt-2 bg-pink-50 rounded-xl px-3 py-2 text-sm text-gray-600 italic">
                           💬 {post.comment}
                         </div>
                       )}
@@ -295,31 +295,31 @@ export default function BoardPage() {
                       className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 font-medium">
                       👥 {post.applications.length}人が応募
                       {isMine && pendingApps.length > 0 && (
-                        <span className="bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full text-xs font-bold">
+                        <span className="bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full text-xs font-bold ml-1">
                           承認待ち {pendingApps.length}
                         </span>
                       )}
-                      <span>{isExpanded ? '▲' : '▼'}</span>
+                      <span className="ml-1">{isExpanded ? '▲' : '▼'}</span>
                     </button>
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs px-3 py-1 rounded-full font-bold ${isFull ? 'bg-gray-100 text-gray-400' : 'bg-green-100 text-green-600'}`}>
+                      <span className={`text-xs px-3 py-1 rounded-full font-bold ${isFull ? 'bg-gray-100 text-gray-400' : 'bg-pink-100 text-pink-600'}`}>
                         {isFull ? '😢 満員' : `残り${post.slots-1-approvedCount}席`}
                       </span>
                       {!isMine && !myApp && !isFull && (
                         <button onClick={() => apply(post.id)}
-                          className="bg-gradient-to-r from-green-400 to-emerald-500 text-white text-xs px-4 py-1.5 rounded-full font-bold shadow hover:shadow-md transform hover:-translate-y-0.5 transition-all">
+                          className="bg-gradient-to-r from-pink-400 to-rose-500 text-white text-xs px-4 py-1.5 rounded-full font-bold shadow hover:shadow-md transform hover:-translate-y-0.5 transition-all">
                           参加する！
                         </button>
                       )}
                       {!isMine && myApp?.status === 'pending' && <span className="text-xs text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full font-bold">⏳ 承認待ち</span>}
-                      {!isMine && myApp?.status === 'approved' && <span className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full font-bold">✅ 参加確定</span>}
+                      {!isMine && myApp?.status === 'approved' && <span className="text-xs text-pink-600 bg-pink-50 px-3 py-1 rounded-full font-bold">✅ 参加確定</span>}
                       {!isMine && myApp?.status === 'rejected' && <span className="text-xs text-red-400 bg-red-50 px-3 py-1 rounded-full font-bold">見送り</span>}
                     </div>
                   </div>
                 </div>
 
                 {isExpanded && (
-                  <div className="border-t border-gray-100 bg-gray-50 px-4 pb-4 pt-3">
+                  <div className="border-t border-gray-100 bg-pink-50 px-4 pb-4 pt-3">
                     {post.applications.length === 0 ? (
                       <div className="text-xs text-gray-400 py-2 text-center">まだ応募がありません 🙏</div>
                     ) : (
@@ -327,7 +327,7 @@ export default function BoardPage() {
                         {post.applications.map(app => (
                           <div key={app.id} className="flex items-center justify-between bg-white rounded-2xl px-3 py-2 shadow-sm">
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-green-100 to-emerald-200 flex items-center justify-center text-green-700 text-xs font-bold overflow-hidden">
+                              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-100 to-rose-200 flex items-center justify-center text-pink-600 text-xs font-bold overflow-hidden">
                                 {displayAvatar(app.profiles)}
                               </div>
                               <div>
@@ -339,12 +339,12 @@ export default function BoardPage() {
                               {app.status === 'pending' && isMine && (
                                 <>
                                   <button onClick={() => approve(app.id, post.id, app.user_id)}
-                                    className="text-xs bg-gradient-to-r from-green-400 to-emerald-500 text-white rounded-full px-3 py-1.5 font-bold shadow hover:shadow-md transition-all">承認 ✓</button>
+                                    className="text-xs bg-gradient-to-r from-pink-400 to-rose-500 text-white rounded-full px-3 py-1.5 font-bold shadow hover:shadow-md transition-all">承認 ✓</button>
                                   <button onClick={() => reject(app.id)}
                                     className="text-xs bg-gray-100 text-gray-500 rounded-full px-3 py-1.5 font-bold hover:bg-gray-200 transition-all">見送り</button>
                                 </>
                               )}
-                              {app.status === 'approved' && <span className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full font-bold">✅ 参加確定</span>}
+                              {app.status === 'approved' && <span className="text-xs text-pink-600 bg-pink-50 px-3 py-1 rounded-full font-bold">✅ 参加確定</span>}
                               {app.status === 'rejected' && <span className="text-xs text-red-400 bg-red-50 px-3 py-1 rounded-full font-bold">見送り</span>}
                               {app.status === 'pending' && !isMine && <span className="text-xs text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full font-bold">⏳ 承認待ち</span>}
                             </div>
