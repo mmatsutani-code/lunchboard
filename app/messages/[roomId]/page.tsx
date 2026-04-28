@@ -8,7 +8,7 @@ type Message = {
   text: string
   user_id: string
   created_at: string
-  profiles: { name: string }
+  profiles: { name: string; nickname: string; avatar_url: string }
 }
 
 export default function RoomPage() {
@@ -49,7 +49,7 @@ export default function RoomPage() {
   async function loadRoomInfo() {
     const { data } = await supabase
       .from('rooms')
-      .select('*, posts(shop, date), room_members(user_id, profiles(name))')
+      .select('*, posts(shop, date), room_members(user_id, profiles(name, nickname, avatar_url))')
       .eq('id', roomId)
       .single()
     setRoomInfo(data)
@@ -58,7 +58,7 @@ export default function RoomPage() {
   async function loadMessages() {
     const { data } = await supabase
       .from('messages')
-      .select('*, profiles(name)')
+      .select('*, profiles(name, nickname, avatar_url)')
       .eq('room_id', roomId)
       .order('created_at', { ascending: true })
     setMessages(data || [])
@@ -85,13 +85,19 @@ export default function RoomPage() {
     return `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`
   }
 
+  const displayName = (p: any) => p?.nickname || p?.name || '?'
+  const displayAvatar = (p: any) => {
+    if (p?.avatar_url) return <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+    return <span>{(p?.nickname || p?.name)?.[0] || '?'}</span>
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="bg-white border-b px-4 py-3 flex items-center gap-3">
         <button onClick={() => router.push('/messages')} className="text-gray-400 hover:text-gray-600">‹</button>
         <div>
           <div className="font-medium text-sm">
-            {roomInfo?.room_members?.filter((m: any) => m.user_id !== userId).map((m: any) => m.profiles?.name).join('・')}
+            {roomInfo?.room_members?.filter((m: any) => m.user_id !== userId).map((m: any) => displayName(m.profiles)).join('・')}
           </div>
           <div className="text-xs text-gray-400">
             📍 {roomInfo?.posts?.shop}　{roomInfo?.posts?.date && fmt(roomInfo.posts.date)}
@@ -108,12 +114,12 @@ export default function RoomPage() {
           return (
             <div key={msg.id} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
               {!isMe && (
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-semibold flex-shrink-0">
-                  {msg.profiles?.name?.[0]}
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-semibold flex-shrink-0 overflow-hidden">
+                  {displayAvatar(msg.profiles)}
                 </div>
               )}
               <div>
-                {!isMe && <div className="text-xs text-gray-400 mb-1">{msg.profiles?.name}</div>}
+                {!isMe && <div className="text-xs text-gray-400 mb-1">{displayName(msg.profiles)}</div>}
                 <div className={`px-3 py-2 rounded-2xl text-sm max-w-xs ${isMe ? 'bg-green-500 text-white rounded-br-sm' : 'bg-white border border-gray-100 rounded-bl-sm'}`}>
                   {msg.text}
                 </div>

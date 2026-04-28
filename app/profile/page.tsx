@@ -53,6 +53,10 @@ export default function ProfilePage() {
   }
 
   async function handleSave() {
+    if (!nickname.trim()) {
+      alert('ニックネームは必須です！')
+      return
+    }
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -109,9 +113,11 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="text-sm text-gray-500 mb-1 block">ニックネーム（任意）</label>
+            <label className="text-sm text-gray-500 mb-1 block">
+              ニックネーム <span className="text-red-400">※必須</span>
+            </label>
             <input type="text" placeholder="例：まさき、ランチ王" value={nickname} onChange={e => setNickname(e.target.value)}
-              className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+              className={`w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 ${!nickname.trim() ? 'border-red-300' : ''}`} />
           </div>
 
           <div>
