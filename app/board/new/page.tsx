@@ -3,11 +3,14 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
+const GENRES = ['和食', 'イタリアン', 'フレンチ', '中華', 'タイ料理', 'ベトナム料理', 'カレー', '中東料理', 'お茶・カフェ', 'その他']
+
 export default function NewPostPage() {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('12:00')
   const [shop, setShop] = useState('')
   const [shopUrl, setShopUrl] = useState('')
+  const [genre, setGenre] = useState('')
   const [slots, setSlots] = useState('4')
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(false)
@@ -22,6 +25,7 @@ export default function NewPostPage() {
       user_id: user.id,
       date, time, shop,
       shop_url: shopUrl,
+      genre,
       slots: parseInt(slots),
       comment
     })
@@ -52,12 +56,23 @@ export default function NewPostPage() {
             </select>
           </div>
           <div>
+            <label className="text-sm text-gray-500 mb-1 block">料理ジャンル</label>
+            <div className="flex flex-wrap gap-2">
+              {GENRES.map(g => (
+                <button key={g} onClick={() => setGenre(g)}
+                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${genre === g ? 'bg-green-500 text-white border-green-500' : 'border-gray-200 text-gray-500 hover:border-green-300'}`}>
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <label className="text-sm text-gray-500 mb-1 block">お店・場所</label>
-            <input type="text" placeholder="例：渋谷 タイ料理 バンコク食堂" value={shop} onChange={e => setShop(e.target.value)}
+            <input type="text" placeholder="例：渋谷 バンコク食堂" value={shop} onChange={e => setShop(e.target.value)}
               className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
           </div>
           <div>
-            <label className="text-sm text-gray-500 mb-1 block">お店のURL（任意）</label>
+            <label className="text-sm text-gray-500 mb-1 block">お店情報（任意）</label>
             <input type="url" placeholder="例：https://tabelog.com/..." value={shopUrl} onChange={e => setShopUrl(e.target.value)}
               className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
           </div>

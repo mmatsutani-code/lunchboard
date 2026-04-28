@@ -3,11 +3,14 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 
+const GENRES = ['和食', 'イタリアン', 'フレンチ', '中華', 'タイ料理', 'ベトナム料理', 'カレー', '中東料理', 'お茶・カフェ', 'その他']
+
 export default function EditPostPage() {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('12:00')
   const [shop, setShop] = useState('')
   const [shopUrl, setShopUrl] = useState('')
+  const [genre, setGenre] = useState('')
   const [slots, setSlots] = useState('4')
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(true)
@@ -26,6 +29,7 @@ export default function EditPostPage() {
       setTime(data.time)
       setShop(data.shop)
       setShopUrl(data.shop_url || '')
+      setGenre(data.genre || '')
       setSlots(String(data.slots))
       setComment(data.comment || '')
       setLoading(false)
@@ -36,7 +40,7 @@ export default function EditPostPage() {
   async function handleSave() {
     setSaving(true)
     await supabase.from('posts').update({
-      date, time, shop, shop_url: shopUrl, slots: parseInt(slots), comment
+      date, time, shop, shop_url: shopUrl, genre, slots: parseInt(slots), comment
     }).eq('id', id)
     router.push('/board')
   }
@@ -67,12 +71,23 @@ export default function EditPostPage() {
             </select>
           </div>
           <div>
+            <label className="text-sm text-gray-500 mb-1 block">料理ジャンル</label>
+            <div className="flex flex-wrap gap-2">
+              {GENRES.map(g => (
+                <button key={g} onClick={() => setGenre(g)}
+                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${genre === g ? 'bg-green-500 text-white border-green-500' : 'border-gray-200 text-gray-500 hover:border-green-300'}`}>
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <label className="text-sm text-gray-500 mb-1 block">お店・場所</label>
             <input type="text" value={shop} onChange={e => setShop(e.target.value)}
               className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
           </div>
           <div>
-            <label className="text-sm text-gray-500 mb-1 block">お店のURL（任意）</label>
+            <label className="text-sm text-gray-500 mb-1 block">お店情報（任意）</label>
             <input type="url" value={shopUrl} onChange={e => setShopUrl(e.target.value)}
               className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
           </div>
