@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -39,7 +39,7 @@ const GENRE_COLORS: Record<string, string> = {
   'その他': 'bg-gray-100 text-gray-600',
 }
 
-export default function BoardPage() {
+function BoardPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -385,5 +385,13 @@ export default function BoardPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function BoardPageWrapper() {
+  return (
+    <Suspense>
+      <BoardPage />
+    </Suspense>
   )
 }
