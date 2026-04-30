@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 type Application = {
   id: string
@@ -48,6 +48,8 @@ export default function BoardPage() {
   const [unreadCount, setUnreadCount] = useState(0)
   const supabase = createClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const highlightPostId = searchParams.get('post')
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -68,6 +70,15 @@ export default function BoardPage() {
 
     return () => { supabase.removeChannel(channel) }
   }, [])
+
+  useEffect(() => {
+    if (!highlightPostId || posts.length === 0) return
+    const el = document.getElementById(`post-${highlightPostId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setExpandedPost(highlightPostId)
+    }
+  }, [highlightPostId, posts])
 
   async function loadUnreadCount(uid: string) {
     const { data: memberOf } = await supabase.from('room_members').select('room_id').eq('user_id', uid)
@@ -253,7 +264,7 @@ export default function BoardPage() {
             const genreColor = GENRE_COLORS[post.genre] || 'bg-gray-100 text-gray-600'
 
             return (
-              <div key={post.id} className={`bg-white rounded-3xl shadow-md overflow-hidden animate-fade-in ${isMine ? 'ring-2 ring-pink-400' : ''}`}>
+              <div key={post.id} id={`post-${post.id}`} className={`bg-white rounded-3xl shadow-md overflow-hidden animate-fade-in transition-all ${isMine ? 'ring-2 ring-pink-400' : ''} ${highlightPostId === post.id ? 'ring-2 ring-green-400 shadow-green-100 shadow-lg' : ''}`}>
                 {isMine && (
                   <div className="bg-gradient-to-r from-pink-400 to-rose-400 px-4 py-1.5">
                     <span className="text-white text-xs font-bold">✨ 自分の募集</span>

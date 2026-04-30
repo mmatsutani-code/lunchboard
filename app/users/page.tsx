@@ -18,6 +18,7 @@ type Profile = {
   gender: string
   avatar_url: string
   photos?: Photo[]
+  activePost?: { id: string; date: string; shop: string } | null
 }
 
 export default function UsersPage() {
@@ -41,15 +42,23 @@ export default function UsersPage() {
     const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
     if (!data) { setLoading(false); return }
 
-    const usersWithPhotos = await Promise.all(data.map(async user => {
+    const today = new Date().toISOString().slice(0, 10)
+    const { data: activePosts } = await supabase
+      .from('posts')
+      .select('id, user_id, date, shop')
+      .gte('date', today)
+      .order('date', { ascending: true })
+
+    const usersWithData = await Promise.all(data.map(async user => {
       const { data: photos } = await supabase
         .from('profile_photos')
         .select('*')
         .eq('user_id', user.id)
         .order('order_index', { ascending: true })
-      return { ...user, photos: photos || [] }
+      const activePost = activePosts?.find(p => p.user_id === user.id) || null
+      return { ...user, photos: photos || [], activePost }
     }))
-    setUsers(usersWithPhotos)
+    setUsers(usersWithData)
     setLoading(false)
   }
 
@@ -110,6 +119,11 @@ export default function UsersPage() {
                   {isMe && (
                     <div className="absolute top-2 left-2 bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
                       自分
+                    </div>
+                  )}
+                  {user.activePost && (
+                    <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold animate-pulse">
+                      🍱 募集中
                     </div>
                   )}
                   {(user.photos?.length || 0) > 0 && (
@@ -182,12 +196,20 @@ export default function UsersPage() {
                     {selectedUser.gender && <span className="text-xs bg-rose-50 text-rose-500 px-2 py-0.5 rounded-full font-semibold">{selectedUser.gender}</span>}
                   </div>
                 </div>
-                {selectedUser.id !== userId && (
-                  <button onClick={() => inviteToLunch(selectedUser.id)}
-                    className="bg-gradient-to-r from-pink-400 to-rose-500 text-white px-4 py-2 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all text-sm">
-                    🍜 誘う
-                  </button>
-                )}
+                <div className="flex flex-col gap-2 items-end">
+                  {selectedUser.activePost && (
+                    <button onClick={() => { setSelectedUser(null); router.push(`/board?post=${selectedUser.activePost!.id}`) }}
+                      className="bg-green-500 text-white px-4 py-2 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all text-sm">
+                      🍱 募集を見る
+                    </button>
+                  )}
+                  {selectedUser.id !== userId && (
+                    <button onClick={() => inviteToLunch(selectedUser.id)}
+                      className="bg-gradient-to-r from-pink-400 to-rose-500 text-white px-4 py-2 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all text-sm">
+                      🍜 誘う
+                    </button>
+                  )}
+                </div>
               </div>
               {selectedUser.bio && (
                 <p className="text-sm text-gray-500 bg-pink-50 rounded-2xl px-4 py-3">{selectedUser.bio}</p>
