@@ -63,6 +63,7 @@ export default function UsersPage() {
   const [myRating, setMyRating] = useState<1 | 2 | 3 | null>(null)
   const [myComment, setMyComment] = useState('')
   const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewError, setReviewError] = useState('')
   const [showReviewForm, setShowReviewForm] = useState(false)
   const supabase = createClient()
   const router = useRouter()
@@ -130,11 +131,15 @@ export default function UsersPage() {
   async function submitReview() {
     if (!myRating || !selectedUser || !userId) return
     setReviewLoading(true)
+    setReviewError('')
     const existing = reviews.find(r => r.reviewer_id === userId)
-    if (existing) {
-      await supabase.from('reviews').update({ rating: myRating, comment: myComment }).eq('id', existing.id)
-    } else {
-      await supabase.from('reviews').insert({ reviewer_id: userId, target_id: selectedUser.id, rating: myRating, comment: myComment })
+    const { error } = existing
+      ? await supabase.from('reviews').update({ rating: myRating, comment: myComment }).eq('id', existing.id)
+      : await supabase.from('reviews').insert({ reviewer_id: userId, target_id: selectedUser.id, rating: myRating, comment: myComment })
+    if (error) {
+      setReviewError(error.message)
+      setReviewLoading(false)
+      return
     }
     await loadReviews(selectedUser.id)
     setShowReviewForm(false)
@@ -385,8 +390,11 @@ export default function UsersPage() {
                         rows={2}
                         className="w-full text-sm border border-pink-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300 bg-white resize-none mb-2"
                       />
+                      {reviewError && (
+                        <p className="text-xs text-red-500 mb-2">{reviewError}</p>
+                      )}
                       <div className="flex gap-2">
-                        <button onClick={() => setShowReviewForm(false)}
+                        <button onClick={() => { setShowReviewForm(false); setReviewError('') }}
                           className="flex-1 text-sm text-gray-500 bg-white rounded-xl py-2 font-semibold hover:bg-gray-50 transition-colors">
                           キャンセル
                         </button>
