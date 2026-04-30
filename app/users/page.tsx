@@ -132,12 +132,11 @@ export default function UsersPage() {
     if (!myRating || !selectedUser || !userId) return
     setReviewLoading(true)
     setReviewError('')
-    const { data: existing } = await supabase
+    const { data: freshReviews } = await supabase
       .from('reviews')
-      .select('id')
-      .eq('reviewer_id', userId)
+      .select('id, reviewer_id')
       .eq('target_id', selectedUser.id)
-      .maybeSingle()
+    const existing = (freshReviews || []).find(r => r.reviewer_id === userId)
     const { error } = existing
       ? await supabase.from('reviews').update({ rating: myRating, comment: myComment }).eq('id', existing.id)
       : await supabase.from('reviews').insert({ reviewer_id: userId, target_id: selectedUser.id, rating: myRating, comment: myComment })
