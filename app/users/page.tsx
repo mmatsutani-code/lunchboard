@@ -21,6 +21,23 @@ type Profile = {
   activePost?: { id: string; date: string; shop: string } | null
 }
 
+function seededRandom(seed: number) {
+  let s = seed
+  return () => {
+    s = (s * 1664525 + 1013904223) & 0xffffffff
+    return (s >>> 0) / 0xffffffff
+  }
+}
+
+function pickDailyUsers(users: Profile[], count: number): Profile[] {
+  if (users.length <= count) return users
+  const today = new Date().toISOString().slice(0, 10)
+  const seed = today.split('-').reduce((acc, n) => acc * 100 + parseInt(n), 0)
+  const rand = seededRandom(seed)
+  const shuffled = [...users].sort(() => rand() - 0.5)
+  return shuffled.slice(0, count)
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([])
   const [userId, setUserId] = useState<string | null>(null)
@@ -96,6 +113,47 @@ export default function UsersPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-5">
+
+        {/* 今日のおすすめ */}
+        {users.length > 0 && (() => {
+          const picks = pickDailyUsers(users.filter(u => u.id !== userId), 3)
+          return (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">✨</span>
+                <h2 className="font-black text-gray-700">今日のおすすめ</h2>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">毎日更新</span>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {picks.map(user => (
+                  <div key={user.id}
+                    onClick={() => { setSelectedUser(user); setCurrentPhotoIndex(0) }}
+                    className="flex-shrink-0 w-28 cursor-pointer group">
+                    <div className="relative w-28 h-28 rounded-2xl overflow-hidden bg-gradient-to-br from-pink-100 to-rose-200 shadow-md group-hover:shadow-lg transition-all">
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-pink-400">
+                          {(user.nickname || user.name)?.[0] || '?'}
+                        </div>
+                      )}
+                      {user.activePost && (
+                        <div className="absolute bottom-1 left-1 right-1 bg-green-500/90 text-white text-[10px] text-center rounded-lg py-0.5 font-bold">
+                          🍱 募集中
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-1.5 text-center">
+                      <div className="text-xs font-bold text-gray-700 truncate">{user.nickname || user.name}</div>
+                      {user.age_group && <div className="text-[10px] text-gray-400">{user.age_group}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
         <div className="grid grid-cols-2 gap-3">
           {users.map(user => {
             const isMe = user.id === userId
