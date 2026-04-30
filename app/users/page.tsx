@@ -19,6 +19,8 @@ type Profile = {
   avatar_url: string
   photos?: Photo[]
   activePost?: { id: string; date: string; shop: string } | null
+  reviewAvg?: number | null
+  reviewCount?: number
 }
 
 type Review = {
@@ -53,6 +55,19 @@ function pickDailyUsers(users: Profile[], count: number): Profile[] {
   return shuffled.slice(0, count)
 }
 
+function formatRelativeTime(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'たった今'
+  if (mins < 60) return `${mins}分前`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}時間前`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}日前`
+  const months = Math.floor(days / 30)
+  return `${months}ヶ月前`
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([])
   const [userId, setUserId] = useState<string | null>(null)
@@ -81,11 +96,17 @@ export default function UsersPage() {
     if (!data) { setLoading(false); return }
 
     const today = new Date().toISOString().slice(0, 10)
-    const { data: activePosts } = await supabase
-      .from('posts')
-      .select('id, user_id, date, shop')
-      .gte('date', today)
-      .order('date', { ascending: true })
+    const [{ data: activePosts }, { data: allReviews }] = await Promise.all([
+      supabase.from('posts').select('id, user_id, date, shop').gte('date', today).order('date', { ascending: true }),
+      supabase.from('reviews').select('target_id, rating'),
+    ])
+
+    const reviewStats: Record<string, { sum: number; count: number }> = {}
+    allReviews?.forEach(r => {
+      if (!reviewStats[r.target_id]) reviewStats[r.target_id] = { sum: 0, count: 0 }
+      reviewStats[r.target_id].sum += r.rating
+      reviewStats[r.target_id].count++
+    })
 
     const usersWithData = await Promise.all(data.map(async user => {
       const { data: photos } = await supabase
@@ -94,7 +115,14 @@ export default function UsersPage() {
         .eq('user_id', user.id)
         .order('order_index', { ascending: true })
       const activePost = activePosts?.find(p => p.user_id === user.id) || null
-      return { ...user, photos: photos || [], activePost }
+      const stats = reviewStats[user.id]
+      return {
+        ...user,
+        photos: photos || [],
+        activePost,
+        reviewAvg: stats ? stats.sum / stats.count : null,
+        reviewCount: stats?.count || 0,
+      }
     }))
     setUsers(usersWithData)
     setLoading(false)
@@ -144,6 +172,22 @@ export default function UsersPage() {
     await loadReviews(selectedUser.id)
     setShowReviewForm(false)
     setReviewLoading(false)
+    loadUsers()
+  }
+
+  async function deleteReview() {
+    if (!selectedUser || !userId) return
+    const existing = reviews.find(r => r.reviewer_id === userId)
+    if (!existing) return
+    if (!confirm('口コミを削除しますか？')) return
+    setReviewLoading(true)
+    await supabase.from('reviews').delete().eq('id', existing.id)
+    setMyRating(null)
+    setMyComment('')
+    setShowReviewForm(false)
+    await loadReviews(selectedUser.id)
+    setReviewLoading(false)
+    loadUsers()
   }
 
   async function inviteToLunch(targetUserId: string) {
@@ -218,6 +262,11 @@ export default function UsersPage() {
                     <div className="mt-1.5 text-center">
                       <div className="text-xs font-bold text-gray-700 truncate">{user.nickname || user.name}</div>
                       {user.age_group && <div className="text-[10px] text-gray-400">{user.age_group}</div>}
+                      {(user.reviewCount || 0) > 0 && user.reviewAvg != null && (
+                        <div className="text-[10px] text-gray-500 mt-0.5">
+                          {RATINGS.find(r => r.value === Math.round(user.reviewAvg!))?.emoji} {user.reviewCount}件
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -256,6 +305,11 @@ export default function UsersPage() {
                       📷 {(user.photos?.length || 0) + (user.avatar_url ? 1 : 0)}
                     </div>
                   )}
+                  {(user.reviewCount || 0) > 0 && user.reviewAvg != null && (
+                    <div className="absolute bottom-2 left-2 bg-white/80 backdrop-blur text-xs px-2 py-0.5 rounded-full font-semibold text-gray-700">
+                      {RATINGS.find(r => r.value === Math.round(user.reviewAvg!))?.emoji} {user.reviewCount}
+                    </div>
+                  )}
                 </div>
                 <div className="p-3">
                   <div className="font-bold text-gray-800 truncate">{displayName(user)}</div>
@@ -271,14 +325,12 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* プロフィール詳細モーダル */}
       {selectedUser && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center p-4"
           onClick={() => setSelectedUser(null)}>
           <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
             onClick={e => e.stopPropagation()}>
 
-            {/* 写真スライダー */}
             <div className="relative aspect-square bg-gradient-to-br from-pink-100 to-rose-200 flex-shrink-0">
               {(() => {
                 const allPhotos = [
@@ -314,7 +366,6 @@ export default function UsersPage() {
 
             <div className="overflow-y-auto">
               <div className="p-5">
-                {/* 基本情報 */}
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <div className="font-black text-xl text-gray-800">{displayName(selectedUser)}</div>
@@ -342,35 +393,50 @@ export default function UsersPage() {
                   <p className="text-sm text-gray-500 bg-pink-50 rounded-2xl px-4 py-3 mb-4">{selectedUser.bio}</p>
                 )}
 
-                {/* 口コミセクション */}
                 <div className="border-t border-gray-100 pt-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="font-black text-gray-700">口コミ</span>
                       <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{reviews.length}件</span>
                     </div>
-                    {selectedUser.id !== userId && !showReviewForm && (
-                      <button onClick={() => setShowReviewForm(true)}
-                        className="text-xs bg-pink-50 text-pink-500 px-3 py-1.5 rounded-full font-bold hover:bg-pink-100 transition-colors">
-                        {reviews.find(r => r.reviewer_id === userId) ? '編集' : '+ 書く'}
-                      </button>
+                    {selectedUser.id !== userId && (
+                      <div className="flex items-center gap-2">
+                        {reviews.find(r => r.reviewer_id === userId) && !showReviewForm && (
+                          <button onClick={deleteReview} disabled={reviewLoading}
+                            className="text-xs text-red-400 hover:text-red-500 font-semibold disabled:opacity-50">
+                            削除
+                          </button>
+                        )}
+                        {!showReviewForm && (
+                          <button onClick={() => setShowReviewForm(true)}
+                            className="text-xs bg-pink-50 text-pink-500 px-3 py-1.5 rounded-full font-bold hover:bg-pink-100 transition-colors">
+                            {reviews.find(r => r.reviewer_id === userId) ? '編集' : '+ 書く'}
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 
-                  {/* 評価サマリー */}
                   {reviews.length > 0 && (
-                    <div className="flex gap-3 mb-4 bg-gray-50 rounded-2xl p-3">
-                      {ratingCounts.map(r => (
-                        <div key={r.value} className="flex-1 text-center">
-                          <div className="text-2xl">{r.emoji}</div>
-                          <div className="text-xs text-gray-500 font-semibold">{r.label}</div>
-                          <div className="text-sm font-black text-gray-700">{r.count}</div>
-                        </div>
-                      ))}
+                    <div className="mb-4 bg-gray-50 rounded-2xl p-3 space-y-2">
+                      {ratingCounts.map(r => {
+                        const pct = reviews.length > 0 ? Math.round((r.count / reviews.length) * 100) : 0
+                        return (
+                          <div key={r.value} className="flex items-center gap-2">
+                            <span className="text-lg w-7 text-center">{r.emoji}</span>
+                            <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-pink-400 to-rose-400 rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-gray-500 w-10 text-right font-semibold">{r.count}件</span>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
 
-                  {/* 口コミ投稿フォーム */}
                   {showReviewForm && (
                     <div className="bg-pink-50 rounded-2xl p-4 mb-4">
                       <p className="text-xs font-bold text-gray-600 mb-2">評価を選んでください</p>
@@ -388,8 +454,10 @@ export default function UsersPage() {
                         onChange={e => setMyComment(e.target.value)}
                         placeholder="コメントを書く（任意）"
                         rows={2}
-                        className="w-full text-sm border border-pink-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300 bg-white resize-none mb-2"
+                        maxLength={200}
+                        className="w-full text-sm border border-pink-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300 bg-white resize-none mb-1"
                       />
+                      <div className="text-right text-[10px] text-gray-400 mb-2">{myComment.length}/200</div>
                       {reviewError && (
                         <p className="text-xs text-red-500 mb-2">{reviewError}</p>
                       )}
@@ -406,7 +474,6 @@ export default function UsersPage() {
                     </div>
                   )}
 
-                  {/* 口コミ一覧 */}
                   {reviews.length === 0 ? (
                     <p className="text-sm text-center text-gray-300 py-4">まだ口コミがありません</p>
                   ) : (
@@ -419,12 +486,13 @@ export default function UsersPage() {
                               : (review.profiles?.nickname || review.profiles?.name)?.[0] || '?'}
                           </div>
                           <div className="flex-1 bg-gray-50 rounded-2xl px-3 py-2">
-                            <div className="flex items-center gap-2 mb-0.5">
+                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                               <span className="text-xs font-bold text-gray-700">{displayName(review.profiles)}</span>
                               <span className="text-base">{RATINGS.find(r => r.value === review.rating)?.emoji}</span>
                               {review.reviewer_id === userId && (
                                 <span className="text-[10px] text-pink-400 font-semibold">自分</span>
                               )}
+                              <span className="text-[10px] text-gray-400 ml-auto">{formatRelativeTime(review.created_at)}</span>
                             </div>
                             {review.comment && <p className="text-xs text-gray-500">{review.comment}</p>}
                           </div>
