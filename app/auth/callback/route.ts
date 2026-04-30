@@ -33,10 +33,12 @@ export async function GET(request: NextRequest) {
         .single()
 
       if (!existing) {
+        const name = searchParams.get('name') || user.email?.split('@')[0] || 'ユーザー'
+        const department = searchParams.get('dept') || ''
         await supabase.from('profiles').insert({
           id: user.id,
-          name: user.email?.split('@')[0] || 'ユーザー',
-          department: ''
+          name,
+          department,
         })
       }
     }

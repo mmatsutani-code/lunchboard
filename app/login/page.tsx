@@ -13,11 +13,10 @@ export default function LoginPage() {
   async function handleLogin() {
     if (!email || !name) return
     setLoading(true)
-    localStorage.setItem('pending_name', name)
-    localStorage.setItem('pending_dept', dept)
+    const params = new URLSearchParams({ name, dept })
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${location.origin}/auth/callback` }
+      options: { emailRedirectTo: `${location.origin}/auth/callback?${params}` }
     })
     if (!error) setSent(true)
     setLoading(false)
