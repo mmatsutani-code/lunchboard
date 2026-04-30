@@ -21,6 +21,21 @@ type Profile = {
   activePost?: { id: string; date: string; shop: string } | null
 }
 
+type Review = {
+  id: string
+  reviewer_id: string
+  rating: 1 | 2 | 3
+  comment: string
+  created_at: string
+  profiles: { name: string; nickname: string; avatar_url: string }
+}
+
+const RATINGS = [
+  { value: 1, emoji: '😞', label: '悪い' },
+  { value: 2, emoji: '😐', label: '普通' },
+  { value: 3, emoji: '😊', label: '良い' },
+] as const
+
 function seededRandom(seed: number) {
   let s = seed
   return () => {
@@ -44,6 +59,11 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null)
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [myRating, setMyRating] = useState<1 | 2 | 3 | null>(null)
+  const [myComment, setMyComment] = useState('')
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [showReviewForm, setShowReviewForm] = useState(false)
   const supabase = createClient()
   const router = useRouter()
 
@@ -79,6 +99,48 @@ export default function UsersPage() {
     setLoading(false)
   }
 
+  async function loadReviews(targetId: string) {
+    const { data } = await supabase
+      .from('reviews')
+      .select('*, profiles(name, nickname, avatar_url)')
+      .eq('target_id', targetId)
+      .order('created_at', { ascending: false })
+    setReviews((data as Review[]) || [])
+  }
+
+  function openModal(user: Profile) {
+    setSelectedUser(user)
+    setCurrentPhotoIndex(0)
+    setReviews([])
+    setMyRating(null)
+    setMyComment('')
+    setShowReviewForm(false)
+    loadReviews(user.id)
+  }
+
+  useEffect(() => {
+    if (!userId || reviews.length === 0) return
+    const mine = reviews.find(r => r.reviewer_id === userId)
+    if (mine) {
+      setMyRating(mine.rating)
+      setMyComment(mine.comment || '')
+    }
+  }, [reviews, userId])
+
+  async function submitReview() {
+    if (!myRating || !selectedUser || !userId) return
+    setReviewLoading(true)
+    const existing = reviews.find(r => r.reviewer_id === userId)
+    if (existing) {
+      await supabase.from('reviews').update({ rating: myRating, comment: myComment }).eq('id', existing.id)
+    } else {
+      await supabase.from('reviews').insert({ reviewer_id: userId, target_id: selectedUser.id, rating: myRating, comment: myComment })
+    }
+    await loadReviews(selectedUser.id)
+    setShowReviewForm(false)
+    setReviewLoading(false)
+  }
+
   async function inviteToLunch(targetUserId: string) {
     const { data: room } = await supabase.from('rooms').insert({ post_id: null }).select().single()
     if (!room) return
@@ -94,7 +156,12 @@ export default function UsersPage() {
     router.push(`/messages/${room.id}`)
   }
 
-  const displayName = (u: Profile) => u?.nickname || u?.name || '?'
+  const displayName = (u: any) => u?.nickname || u?.name || '?'
+
+  const ratingCounts = RATINGS.map(r => ({
+    ...r,
+    count: reviews.filter(rv => rv.rating === r.value).length,
+  }))
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-rose-100">
@@ -127,7 +194,7 @@ export default function UsersPage() {
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {picks.map(user => (
                   <div key={user.id}
-                    onClick={() => { setSelectedUser(user); setCurrentPhotoIndex(0) }}
+                    onClick={() => openModal(user)}
                     className="flex-shrink-0 w-28 cursor-pointer group">
                     <div className="relative w-28 h-28 rounded-2xl overflow-hidden bg-gradient-to-br from-pink-100 to-rose-200 shadow-md group-hover:shadow-lg transition-all">
                       {user.avatar_url ? (
@@ -157,14 +224,9 @@ export default function UsersPage() {
         <div className="grid grid-cols-2 gap-3">
           {users.map(user => {
             const isMe = user.id === userId
-            const allPhotos = [
-              ...(user.avatar_url ? [{ id: 'avatar', photo_url: user.avatar_url }] : []),
-              ...(user.photos || [])
-            ]
-
             return (
               <div key={user.id}
-                onClick={() => { setSelectedUser(user); setCurrentPhotoIndex(0) }}
+                onClick={() => openModal(user)}
                 className="bg-white rounded-3xl shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-0.5">
                 <div className="relative aspect-square bg-gradient-to-br from-pink-100 to-rose-200">
                   {user.avatar_url ? (
@@ -208,11 +270,11 @@ export default function UsersPage() {
       {selectedUser && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center p-4"
           onClick={() => setSelectedUser(null)}>
-          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
             onClick={e => e.stopPropagation()}>
 
             {/* 写真スライダー */}
-            <div className="relative aspect-square bg-gradient-to-br from-pink-100 to-rose-200">
+            <div className="relative aspect-square bg-gradient-to-br from-pink-100 to-rose-200 flex-shrink-0">
               {(() => {
                 const allPhotos = [
                   ...(selectedUser.avatar_url ? [selectedUser.avatar_url] : []),
@@ -245,33 +307,125 @@ export default function UsersPage() {
                 className="absolute top-3 right-3 w-8 h-8 bg-black/40 text-white rounded-full flex items-center justify-center hover:bg-black/60">✕</button>
             </div>
 
-            <div className="p-5">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="font-black text-xl text-gray-800">{displayName(selectedUser)}</div>
-                  <div className="flex gap-2 mt-1">
-                    {selectedUser.age_group && <span className="text-xs bg-pink-50 text-pink-500 px-2 py-0.5 rounded-full font-semibold">{selectedUser.age_group}</span>}
-                    {selectedUser.gender && <span className="text-xs bg-rose-50 text-rose-500 px-2 py-0.5 rounded-full font-semibold">{selectedUser.gender}</span>}
+            <div className="overflow-y-auto">
+              <div className="p-5">
+                {/* 基本情報 */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="font-black text-xl text-gray-800">{displayName(selectedUser)}</div>
+                    <div className="flex gap-2 mt-1">
+                      {selectedUser.age_group && <span className="text-xs bg-pink-50 text-pink-500 px-2 py-0.5 rounded-full font-semibold">{selectedUser.age_group}</span>}
+                      {selectedUser.gender && <span className="text-xs bg-rose-50 text-rose-500 px-2 py-0.5 rounded-full font-semibold">{selectedUser.gender}</span>}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 items-end">
+                    {selectedUser.activePost && (
+                      <button onClick={() => { setSelectedUser(null); router.push(`/board?post=${selectedUser.activePost!.id}`) }}
+                        className="bg-green-500 text-white px-4 py-2 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all text-sm">
+                        🍱 募集を見る
+                      </button>
+                    )}
+                    {selectedUser.id !== userId && (
+                      <button onClick={() => inviteToLunch(selectedUser.id)}
+                        className="bg-gradient-to-r from-pink-400 to-rose-500 text-white px-4 py-2 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all text-sm">
+                        🍜 誘う
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div className="flex flex-col gap-2 items-end">
-                  {selectedUser.activePost && (
-                    <button onClick={() => { setSelectedUser(null); router.push(`/board?post=${selectedUser.activePost!.id}`) }}
-                      className="bg-green-500 text-white px-4 py-2 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all text-sm">
-                      🍱 募集を見る
-                    </button>
+                {selectedUser.bio && (
+                  <p className="text-sm text-gray-500 bg-pink-50 rounded-2xl px-4 py-3 mb-4">{selectedUser.bio}</p>
+                )}
+
+                {/* 口コミセクション */}
+                <div className="border-t border-gray-100 pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-gray-700">口コミ</span>
+                      <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{reviews.length}件</span>
+                    </div>
+                    {selectedUser.id !== userId && !showReviewForm && (
+                      <button onClick={() => setShowReviewForm(true)}
+                        className="text-xs bg-pink-50 text-pink-500 px-3 py-1.5 rounded-full font-bold hover:bg-pink-100 transition-colors">
+                        {reviews.find(r => r.reviewer_id === userId) ? '編集' : '+ 書く'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 評価サマリー */}
+                  {reviews.length > 0 && (
+                    <div className="flex gap-3 mb-4 bg-gray-50 rounded-2xl p-3">
+                      {ratingCounts.map(r => (
+                        <div key={r.value} className="flex-1 text-center">
+                          <div className="text-2xl">{r.emoji}</div>
+                          <div className="text-xs text-gray-500 font-semibold">{r.label}</div>
+                          <div className="text-sm font-black text-gray-700">{r.count}</div>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                  {selectedUser.id !== userId && (
-                    <button onClick={() => inviteToLunch(selectedUser.id)}
-                      className="bg-gradient-to-r from-pink-400 to-rose-500 text-white px-4 py-2 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all text-sm">
-                      🍜 誘う
-                    </button>
+
+                  {/* 口コミ投稿フォーム */}
+                  {showReviewForm && (
+                    <div className="bg-pink-50 rounded-2xl p-4 mb-4">
+                      <p className="text-xs font-bold text-gray-600 mb-2">評価を選んでください</p>
+                      <div className="flex gap-2 mb-3">
+                        {RATINGS.map(r => (
+                          <button key={r.value} onClick={() => setMyRating(r.value)}
+                            className={`flex-1 flex flex-col items-center py-2 rounded-xl border-2 transition-all ${myRating === r.value ? 'border-pink-400 bg-white shadow-md scale-105' : 'border-transparent bg-white/60 hover:bg-white'}`}>
+                            <span className="text-2xl">{r.emoji}</span>
+                            <span className="text-xs text-gray-500 font-semibold">{r.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        value={myComment}
+                        onChange={e => setMyComment(e.target.value)}
+                        placeholder="コメントを書く（任意）"
+                        rows={2}
+                        className="w-full text-sm border border-pink-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300 bg-white resize-none mb-2"
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => setShowReviewForm(false)}
+                          className="flex-1 text-sm text-gray-500 bg-white rounded-xl py-2 font-semibold hover:bg-gray-50 transition-colors">
+                          キャンセル
+                        </button>
+                        <button onClick={submitReview} disabled={!myRating || reviewLoading}
+                          className="flex-1 text-sm bg-gradient-to-r from-pink-400 to-rose-500 text-white rounded-xl py-2 font-bold disabled:opacity-50 hover:shadow-md transition-all">
+                          {reviewLoading ? '送信中...' : '送信'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 口コミ一覧 */}
+                  {reviews.length === 0 ? (
+                    <p className="text-sm text-center text-gray-300 py-4">まだ口コミがありません</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {reviews.map(review => (
+                        <div key={review.id} className="flex gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-100 to-rose-200 flex items-center justify-center text-xs font-bold text-pink-500 flex-shrink-0 overflow-hidden">
+                            {review.profiles?.avatar_url
+                              ? <img src={review.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                              : (review.profiles?.nickname || review.profiles?.name)?.[0] || '?'}
+                          </div>
+                          <div className="flex-1 bg-gray-50 rounded-2xl px-3 py-2">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-xs font-bold text-gray-700">{displayName(review.profiles)}</span>
+                              <span className="text-base">{RATINGS.find(r => r.value === review.rating)?.emoji}</span>
+                              {review.reviewer_id === userId && (
+                                <span className="text-[10px] text-pink-400 font-semibold">自分</span>
+                              )}
+                            </div>
+                            {review.comment && <p className="text-xs text-gray-500">{review.comment}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
-              {selectedUser.bio && (
-                <p className="text-sm text-gray-500 bg-pink-50 rounded-2xl px-4 py-3">{selectedUser.bio}</p>
-              )}
             </div>
           </div>
         </div>
