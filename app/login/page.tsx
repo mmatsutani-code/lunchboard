@@ -4,18 +4,16 @@ import { createClient } from '@/lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
-  const [name, setName] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
   async function handleLogin() {
-    if (!email || !name) return
+    if (!email) return
     setLoading(true)
-    const params = new URLSearchParams({ name })
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${location.origin}/auth/callback?${params}` }
+      options: { emailRedirectTo: `${location.origin}/auth/callback` }
     })
     if (!error) setSent(true)
     setLoading(false)
@@ -40,11 +38,9 @@ export default function LoginPage() {
           <p className="text-gray-500 text-sm mt-1">社内ランチマッチング</p>
         </div>
         <div className="space-y-3">
-          <input type="text" placeholder="名前" value={name} onChange={e => setName(e.target.value)}
-            className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
           <input type="email" placeholder="メールアドレス" value={email} onChange={e => setEmail(e.target.value)}
             className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-          <button onClick={handleLogin} disabled={loading || !email || !name}
+          <button onClick={handleLogin} disabled={loading || !email}
             className="w-full bg-green-500 text-white rounded-lg py-2 text-sm font-medium hover:bg-green-600 disabled:opacity-50">
             {loading ? '送信中...' : 'ログインリンクを送る'}
           </button>
