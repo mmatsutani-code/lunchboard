@@ -160,10 +160,10 @@ export default function UsersPage() {
     if (!myRating || !selectedUser || !userId) return
     setReviewLoading(true)
     setReviewError('')
-    const existing = reviews.find(r => r.reviewer_id === userId)
-    const { error } = existing
-      ? await supabase.from('reviews').update({ rating: myRating, comment: myComment }).eq('id', existing.id)
-      : await supabase.from('reviews').insert({ reviewer_id: userId, target_id: selectedUser.id, rating: myRating, comment: myComment })
+    const { error } = await supabase.from('reviews').upsert(
+      { reviewer_id: userId, target_id: selectedUser.id, rating: myRating, comment: myComment },
+      { onConflict: 'reviewer_id,target_id' }
+    )
     if (error) {
       setReviewError(error.message)
       setReviewLoading(false)
@@ -230,7 +230,6 @@ export default function UsersPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-5">
 
-        {/* 今日のおすすめ */}
         {users.length > 0 && (() => {
           const picks = pickDailyUsers(users.filter(u => u.id !== userId), 3)
           return (
