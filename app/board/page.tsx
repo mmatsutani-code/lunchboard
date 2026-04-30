@@ -275,7 +275,7 @@ export default function BoardPage() {
                       </div>
                       <div className="font-black text-gray-900 text-lg leading-tight">{fmt(post.date)}</div>
                       <div className="text-pink-500 font-semibold text-sm">🕐 {post.time}〜</div>
-                      <div className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                      <div className="text-sm text-gray-500 mt-1 flex items-center gap-2">
                         📍
                         {post.shop_url ? (
                           <a href={post.shop_url} target="_blank" rel="noopener noreferrer"
@@ -283,6 +283,10 @@ export default function BoardPage() {
                         ) : (
                           <span className="font-medium">{post.shop}</span>
                         )}
+                        <a href={`https://maps.google.com/?q=${encodeURIComponent(post.shop)}`} target="_blank" rel="noopener noreferrer"
+                          className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-semibold hover:bg-green-100 transition-colors whitespace-nowrap">
+                          🗺️ 地図
+                        </a>
                       </div>
                       {post.comment && (
                         <div className="mt-2 bg-pink-50 rounded-xl px-3 py-2 text-sm text-gray-600 italic">
