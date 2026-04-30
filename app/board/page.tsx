@@ -185,8 +185,9 @@ export default function BoardPage() {
             </div>
             <div className="flex gap-2">
               <button onClick={() => router.push('/messages')}
-                className="relative bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all">
-                💬
+                className="relative bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all flex flex-col items-center gap-0.5">
+                <span>💬</span>
+                <span className="text-[10px] font-semibold leading-none">トーク</span>
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold pulse-dot">
                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -194,11 +195,20 @@ export default function BoardPage() {
                 )}
               </button>
               <button onClick={() => router.push('/calendar')}
-                className="bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all">📅</button>
+                className="bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all flex flex-col items-center gap-0.5">
+                <span>📅</span>
+                <span className="text-[10px] font-semibold leading-none">予定</span>
+              </button>
               <button onClick={() => router.push('/users')}
-                className="bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all">👥</button>
+                className="bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all flex flex-col items-center gap-0.5">
+                <span>👥</span>
+                <span className="text-[10px] font-semibold leading-none">メンバー</span>
+              </button>
               <button onClick={() => router.push('/profile')}
-                className="bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all">👤</button>
+                className="bg-white/20 backdrop-blur rounded-xl px-3 py-2 text-white hover:bg-white/30 transition-all flex flex-col items-center gap-0.5">
+                <span>👤</span>
+                <span className="text-[10px] font-semibold leading-none">マイページ</span>
+              </button>
             </div>
           </div>
         </div>
