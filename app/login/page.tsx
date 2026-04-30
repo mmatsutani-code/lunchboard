@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
-  const [dept, setDept] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
@@ -13,7 +12,7 @@ export default function LoginPage() {
   async function handleLogin() {
     if (!email || !name) return
     setLoading(true)
-    const params = new URLSearchParams({ name, dept })
+    const params = new URLSearchParams({ name })
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${location.origin}/auth/callback?${params}` }
@@ -42,8 +41,6 @@ export default function LoginPage() {
         </div>
         <div className="space-y-3">
           <input type="text" placeholder="名前" value={name} onChange={e => setName(e.target.value)}
-            className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-          <input type="text" placeholder="部署" value={dept} onChange={e => setDept(e.target.value)}
             className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
           <input type="email" placeholder="メールアドレス" value={email} onChange={e => setEmail(e.target.value)}
             className="w-full border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
