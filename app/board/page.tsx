@@ -96,9 +96,11 @@ function BoardPage() {
   }
 
   async function loadPosts() {
+    const today = new Date().toISOString().slice(0, 10)
     const { data } = await supabase
       .from('posts')
       .select('*, profiles(name, nickname, department, avatar_url), applications(id, user_id, status, profiles(name, nickname, department, avatar_url))')
+      .gte('date', today)
       .order('date', { ascending: true })
     setPosts(data || [])
     setLoading(false)
