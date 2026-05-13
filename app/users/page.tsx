@@ -29,7 +29,7 @@ type Review = {
   rating: 1 | 2 | 3
   comment: string
   created_at: string
-  profiles: { name: string; nickname: string; avatar_url: string }
+  reviewer: { name: string; nickname: string; avatar_url: string }
 }
 
 const RATINGS = [
@@ -131,7 +131,7 @@ export default function UsersPage() {
   async function loadReviews(targetId: string) {
     const { data } = await supabase
       .from('reviews')
-      .select('*, profiles(name, nickname, avatar_url)')
+      .select('*, reviewer:profiles!reviews_reviewer_id_fkey(name, nickname, avatar_url)')
       .eq('target_id', targetId)
       .order('created_at', { ascending: false })
     setReviews((data as Review[]) || [])
@@ -480,13 +480,13 @@ export default function UsersPage() {
                       {reviews.map(review => (
                         <div key={review.id} className="flex gap-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-100 to-rose-200 flex items-center justify-center text-xs font-bold text-pink-500 flex-shrink-0 overflow-hidden">
-                            {review.profiles?.avatar_url
-                              ? <img src={review.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
-                              : (review.profiles?.nickname || review.profiles?.name)?.[0] || '?'}
+                            {review.reviewer?.avatar_url
+                              ? <img src={review.reviewer.avatar_url} alt="" className="w-full h-full object-cover" />
+                              : (review.reviewer?.nickname || review.reviewer?.name)?.[0] || '?'}
                           </div>
                           <div className="flex-1 bg-gray-50 rounded-2xl px-3 py-2">
                             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                              <span className="text-xs font-bold text-gray-700">{displayName(review.profiles)}</span>
+                              <span className="text-xs font-bold text-gray-700">{displayName(review.reviewer)}</span>
                               <span className="text-base">{RATINGS.find(r => r.value === review.rating)?.emoji}</span>
                               {review.reviewer_id === userId && (
                                 <span className="text-[10px] text-pink-400 font-semibold">自分</span>
