@@ -80,6 +80,7 @@ export default function UsersPage() {
   const [reviewLoading, setReviewLoading] = useState(false)
   const [reviewError, setReviewError] = useState('')
   const [showReviewForm, setShowReviewForm] = useState(false)
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
   const supabase = createClient()
   const router = useRouter()
 
@@ -87,9 +88,28 @@ export default function UsersPage() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { router.push('/login'); return }
       setUserId(data.user.id)
+      loadBlocks(data.user.id)
     })
     loadUsers()
   }, [])
+
+  async function loadBlocks(uid: string) {
+    const { data } = await supabase.from('blocks').select('blocked_id').eq('blocker_id', uid)
+    setBlockedIds(new Set(data?.map(b => b.blocked_id) || []))
+  }
+
+  async function blockUser(targetId: string) {
+    if (!userId) return
+    await supabase.from('blocks').insert({ blocker_id: userId, blocked_id: targetId })
+    setBlockedIds(prev => new Set([...prev, targetId]))
+    setSelectedUser(null)
+  }
+
+  async function unblockUser(targetId: string) {
+    if (!userId) return
+    await supabase.from('blocks').delete().eq('blocker_id', userId).eq('blocked_id', targetId)
+    setBlockedIds(prev => { const next = new Set(prev); next.delete(targetId); return next })
+  }
 
   async function loadUsers() {
     const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
@@ -224,14 +244,14 @@ export default function UsersPage() {
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button onClick={() => router.push('/board')} className="text-white/80 hover:text-white text-xl">‹</button>
           <h1 className="font-black text-white text-lg">メンバー一覧</h1>
-          <span className="text-pink-100 text-sm">{users.length}人</span>
+          <span className="text-pink-100 text-sm">{users.filter(u => !blockedIds.has(u.id)).length}人</span>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-5">
 
         {users.length > 0 && (() => {
-          const picks = pickDailyUsers(users.filter(u => u.id !== userId), 3)
+          const picks = pickDailyUsers(users.filter(u => u.id !== userId && !blockedIds.has(u.id)), 3)
           return (
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
@@ -275,7 +295,7 @@ export default function UsersPage() {
         })()}
 
         <div className="grid grid-cols-2 gap-3">
-          {users.map(user => {
+          {users.filter(u => !blockedIds.has(u.id)).map(user => {
             const isMe = user.id === userId
             return (
               <div key={user.id}
@@ -380,11 +400,24 @@ export default function UsersPage() {
                         🍱 募集を見る
                       </button>
                     )}
-                    {selectedUser.id !== userId && (
+                    {selectedUser.id !== userId && !!userId && (
                       <button onClick={() => inviteToLunch(selectedUser.id)}
                         className="bg-gradient-to-r from-pink-400 to-rose-500 text-white px-4 py-2 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all text-sm">
                         🍜 誘う
                       </button>
+                    )}
+                    {selectedUser.id !== userId && !!userId && (
+                      blockedIds.has(selectedUser.id) ? (
+                        <button onClick={() => unblockUser(selectedUser.id)}
+                          className="text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full font-bold hover:bg-gray-200 transition-colors">
+                          ブロック解除
+                        </button>
+                      ) : (
+                        <button onClick={() => { if (confirm(`${displayName(selectedUser)}をブロックしますか？\n\nこのユーザーの募集やプロフィールが表示されなくなります。`)) blockUser(selectedUser.id) }}
+                          className="text-xs text-red-400 bg-red-50 px-3 py-1.5 rounded-full font-bold hover:bg-red-100 transition-colors">
+                          ブロック
+                        </button>
+                      )
                     )}
                   </div>
                 </div>
@@ -398,7 +431,7 @@ export default function UsersPage() {
                       <span className="font-black text-gray-700">口コミ</span>
                       <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{reviews.length}件</span>
                     </div>
-                    {selectedUser.id !== userId && (
+                    {selectedUser.id !== userId && !!userId && (
                       <div className="flex items-center gap-2">
                         {reviews.find(r => r.reviewer_id === userId) && !showReviewForm && (
                           <button onClick={deleteReview} disabled={reviewLoading}
